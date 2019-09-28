@@ -27,9 +27,8 @@ type
     LongMessage*: string
     ErrorCode*: string
     ErrorParameters*: ResultPage
-  DarkSkyCall* = object of RestCall
-  DarkSkyForecast* = object of DarkSkyCall
-  DarkSkyTimeMachine* = object of DarkSkyCall
+  DarkSkyForecast* = ref object of RestCall
+  DarkSkyTimeMachine* = ref object of RestCall
   Coords* = object of RootObj
     latitude*: float
     longitude*: float
@@ -123,8 +122,8 @@ type
     hourly*: DataBlock
     flags*: Flags
 
-let Forecast* = DarkSkyForecast()
-let TimeMachine* = DarkSkyTimeMachine()
+let Forecast* = DarkSkyForecast(name: "Forecast")
+let TimeMachine* = DarkSkyTimeMachine(name: "TimeMachine")
 
 proc `$`*(c: Coords): string =
   result = &"{c.latitude:3.4f},{c.longitude:3.4f}"
@@ -147,11 +146,6 @@ proc `$`*(e: ref ErrorResponse): string
   {.raises: [].} =
   result = $typeof(e) & " " & e.msg & "\n" & $e.parsed
 
-method `$`(call: DarkSkyCall): string
-  {.base, raises: [].} =
-  ## turn a call into its name
-  result = $call
-
 proc default_endpoint*(name: Url=""): string =
   let key = cast[string](os.getEnv("DARKSKYAPI")).encodeUrl(usePlus=false)
   if name == "":
@@ -166,7 +160,7 @@ method recall*(call: DarkSkyForecast; input: Coords): Recallable
     base = default_endpoint()
     url = base & "/" & $input
 
-  result = call.newRecallable(url, headers={
+  result = call.newRecallable(url.parseUri, headers={
     "Content-Type": "application/json;charset=UTF-8",
   }, body="")
   result.meth = HttpGet
