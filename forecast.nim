@@ -12,14 +12,16 @@ export rest
 
 import jsonconvert
 
+const
+  forecastMinutely {.booldefine.} = false
+
 type
   ResultPage* = JsonNode
 
-type
   Url = string
   DarkSkyClient* = object of RestClient
-  DarkSkyError* = object of CatchableError        ## base for Dark Sky errors
-  ParseError* = object of DarkSkyError            ## misc parse failure
+  DarkSkyError* = object of CatchableError       ## base for Dark Sky errors
+  ParseError* = object of DarkSkyError           ## misc parse failure
     parsed*: ResultPage
     text*: string
   ErrorResponse* = object of ParseError          ## unwrap error response
@@ -117,10 +119,11 @@ type
     latitude*: float
     longitude*: float
     currently*: DataPoint
-    minutely*: DataBlock
     daily*: DataBlock
     hourly*: DataBlock
     flags*: Flags
+    when forecastMinutely:
+      minutely*: DataBlock
 
 let Forecast* = DarkSkyForecast(name: "Forecast")
 let TimeMachine* = DarkSkyTimeMachine(name: "TimeMachine")
@@ -252,7 +255,8 @@ converter toReport*(js: JsonNode): WeatherReport =
   let tz = newTimezone(timezone, someTzInfo, someTzInfo)
   var currently = Current.newPoint(tz, js["currently"])
   result = WeatherReport(currently: currently)
-  result.minutely = Minute.newBlock(tz, js["minutely"])
+  when forecastMinutely:
+    result.minutely = Minute.newBlock(tz, js["minutely"])
   result.hourly = Hourly.newBlock(tz, js["hourly"])
   result.daily = Daily.newBlock(tz, js["daily"])
   result.timezone = js.get("timezone", "")
